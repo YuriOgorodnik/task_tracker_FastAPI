@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy import select, insert, update, delete
+from typing import List
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_async_session
-from src.task.models import task
+from src.employee.dao import EmployeeDAO
+from src.employee.services import get_eligible_employees
+from src.task.dao import TaskDAO
 
 from src.task.schemas import TaskRead, TaskCreate
-
-# from src.task.dependencies import get_least_busy_employee
+from src.tasks.tasks import send_email
 
 router = APIRouter(
     prefix='/task',
@@ -15,87 +16,73 @@ router = APIRouter(
 )
 
 
-@router.get('/list', response_model=list[TaskRead])
+@router.get('/list', response_model=List[TaskRead])
 async def list_tasks(session: AsyncSession = Depends(get_async_session)):
     """Получение общего списка задач"""
-    query = select(task)
-    result = await session.execute(query)
-    return result.all()
+    tasks = await TaskDAO.get_all_tasks(session)
+    return tasks
 
 
 @router.post('/create', response_model=TaskRead)
-async def create_task(new_task: TaskCreate, session: AsyncSession = Depends(get_async_session)):
-    """Создание задачи"""
-    stmt = insert(task).values(**new_task.dict())
-    await session.execute(stmt)
+async def create_task(new_task: TaskCreate, background_tasks: BackgroundTasks,
+                      session: AsyncSession = Depends(get_async_session)):
+    """Создание новой задачи"""
+    created_task = await TaskDAO.add_task(session, new_task.dict())
     await session.commit()
-    return {"status": "success"}
+
+    # Получаем информацию о сотруднике
+    employee = await EmployeeDAO.get_employee_by_id(session, new_task.employee_id)
+
+    # Добавляем отправку уведомления на электронную почту сотруднику в фоновые задачи
+    background_tasks.add_task(send_email, employee.email, new_task.title, new_task.deadline)
+
+    return created_task
+
+
+# @router.post('/create', response_model=TaskRead)
+# async def create_task(new_task: TaskCreate, session: AsyncSession = Depends(get_async_session)):
+#     """Создание новой задачи"""
+#     await TaskDAO.add_task(session, new_task.dict())
+#     await session.commit()
+#     return new_task
 
 
 @router.get('/get/{task_id}', response_model=TaskRead)
 async def get_task(task_id: int, session: AsyncSession = Depends(get_async_session)):
     """Получение информации о задаче по её идентификатору"""
-    query = select(task).where(task.c.id == task_id)
-    result = await session.execute(query)
-    return result.one()
+    db_task = await TaskDAO.get_task_by_id(session, task_id)
+    return db_task
 
 
 @router.put('/update/{task_id}', response_model=TaskRead)
 async def update_task(task_id: int, updated_task: TaskRead,
                       session: AsyncSession = Depends(get_async_session)):
-    """Обновление информации о задаче"""
-    stmt = update(task).where(task.c.id == task_id).values(**updated_task.dict(exclude_unset=True))
-    await session.execute(stmt)
+    """Обновление информации о задаче по её идентификатору"""
+    await TaskDAO.update_task(session, task_id, updated_task.dict(exclude_unset=True))
     await session.commit()
-    return {"status": "success"}
+    return updated_task
 
 
 @router.delete('/delete/{task_id}', response_model=dict)
 async def delete_task(task_id: int, session: AsyncSession = Depends(get_async_session)):
-    """Удаление задачи"""
-    stmt = delete(task).where(task.c.id == task_id)
-    await session.execute(stmt)
+    """Удаление задачи по её идентификатору"""
+    await TaskDAO.delete_task(session, task_id)
     await session.commit()
     return {"status": "success"}
 
 
-#
-# @router.get('/important')
-# async def get_important_tasks(least_busy_employee: Employee = Depends(get_least_busy_employee),
-#                               session: AsyncSession = Depends(get_async_session)):
-#     """
-#     Список важных задач и возможных сотрудников для их выполнения.
-#     Важные задачи - задачи, не взятые в работу, и от которых зависят
-#     другие задачи, взятые в работу.
-#     """
-#     task = await services.get_important_tasks(session)
-#     res_tasks = []
-#     for task in task:
-#         parent_task_employee_task_count = len([t for t in task.parent_task.employee.task if t.is_active])
-#         least_busy_employee_task_count = len([t for t in least_busy_employee.task if t.is_active])
-#         res = parent_task_employee_task_count - least_busy_employee_task_count
-#         if res <= 2:
-#             available_employee = task.parent_task.employee
-#         else:
-#             available_employee = least_busy_employee
-#
-#         task_data = {
-#             'task': TaskRead.model_validate(task, from_attributes=True),
-#             'available_employee': available_employee.__str__()
-#         }
-#         res_tasks.append(task_data)
-#
-#     return res_tasks
-#
-#
-# @router.get('/important', response_model=List[TaskAssignee])
-# async def get_tasks_and_assignees(session: AsyncSession = Depends(get_async_session)):
-#     """Получение списка задач и возможных исполнителей"""
-#     return await services.find_tasks_and_assignees(session)
-#
-#
-# @router.get('/least-busy-employee', response_model=EmployeeRead)
-# async def get_least_busy_employee(session: AsyncSession = Depends(get_async_session)):
-#     """Получение наименее загруженного сотрудника"""
-#     return await services.get_least_busy_employee(session)
+@router.get("/important_tasks", response_model=List[dict])
+async def important_tasks(session: AsyncSession = Depends(get_async_session)):
+    """Получение списка важных задач"""
+    dependent_unassigned_tasks = await TaskDAO.get_dependent_unassigned_tasks(session)
+    result = []
 
+    for task_row in dependent_unassigned_tasks:
+        task_id, title, created_at, deadline, is_active, parent_task_id, employee_id = task_row
+        eligible_employees = await get_eligible_employees(session, task_id)
+        result.append({
+            "important_task": {"id": task_id, "title": title, "deadline": deadline,
+                               "is_active": is_active, "eligible_employees": eligible_employees}
+        })
+
+    return result
