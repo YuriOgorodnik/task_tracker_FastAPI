@@ -1,21 +1,18 @@
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import aiosmtplib
+import smtplib
+
+from src.config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
+from src.tasks.email_sender import create_task_assignment_message
 
 
-async def send_email(employee_email, task_title, deadline):
-    sender_email = "yuri.ogorodnik1@gmail.com"
-    sender_password = "rjknyimyfeprwahz"
+def send_assign_task_email(first_name, email_to, task_title, deadline):
+    msg_content = create_task_assignment_message(
+        first_name, email_to, task_title, deadline
+    )  # Создание содержимого письма
 
-    message = MIMEMultipart()
-    message["From"] = sender_email
-    message["To"] = employee_email
-    message["Subject"] = "Новая задача назначена"
-
-    mail_content = f"Здравствуйте, Вам назначена новая задача: {task_title}. Срок выполнения: {deadline}"
-    message.attach(MIMEText(mail_content, "plain"))
-
-    async with aiosmtplib.SMTP('smtp.gmail.com', 465) as server:
-        await server.starttls()
-        await server.login(sender_email, sender_password)
-        await server.send_message(message)
+    with smtplib.SMTP_SSL(
+        SMTP_HOST, SMTP_PORT
+    ) as server:  # Установление защищенного соединения с SMTP сервером
+        server.login(
+            SMTP_USER, SMTP_PASS
+        )  # Аутентификация на сервере с использованием учетных данных
+        server.send_message(msg_content)  # Отправка письма через сервер
