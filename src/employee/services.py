@@ -8,11 +8,23 @@ async def get_eligible_employees(session, task_id):
     if task_info is None:
         return []
 
-    # Извлекаем данные о задаче
-    task_id, title, created_at, deadline, is_active, parent_task_id, employee_id = task_info
+    # Извлекаем данные о задаче.
+    (
+        task_id,
+        title,
+        created_at,
+        deadline,
+        is_active,
+        parent_task_id,
+        employee_id,
+    ) = task_info
 
     # Если у задачи есть родительская задача, находим информацию о ней
-    parent_task_info = await TaskDAO.get_task_by_id(session, parent_task_id) if parent_task_id else None
+    parent_task_info = (
+        await TaskDAO.get_task_by_id(session, parent_task_id)
+        if parent_task_id
+        else None
+    )
     parent_employee_id = parent_task_info[6] if parent_task_info else None
 
     # Получаем всех сотрудников, отсортированных по количеству задач
@@ -27,7 +39,9 @@ async def get_eligible_employees(session, task_id):
     # Проверяем, соответствует ли наименее загруженный сотрудник критериям
     if least_loaded_employee:
         least_loaded_employee_task_count = len(least_loaded_employee[9])
-        if (not parent_employee_id) or least_loaded_employee_task_count <= (len(parent_task_info[9]) + 2):
+        if (not parent_employee_id) or least_loaded_employee_task_count <= (
+            len(parent_task_info[9]) + 2
+        ):
             # Создаем объект с информацией о задаче и сотруднике
             eligible_employees.append(
                 f"{least_loaded_employee[1]} {least_loaded_employee[2]} {least_loaded_employee[3]}"
