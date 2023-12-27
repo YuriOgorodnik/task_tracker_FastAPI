@@ -17,7 +17,7 @@ class TaskDAO:
             stmt = delete(task)
             await session.execute(stmt)
             await session.execute(text("ALTER SEQUENCE task_id_seq RESTART WITH 1"))
-            print(f"Таблица Task очищена!")
+            print("Таблица Task очищена!")
         except Exception as e:
             print(f"Произошла ошибка: {e}")
 
@@ -49,7 +49,7 @@ class TaskDAO:
 
     @classmethod
     async def get_dependent_unassigned_tasks(cls, session):
-        """Получение списка не назначенных задач, от которых зависят другие задачи"""
+        """Получение списка не назначенных задач, от которых зависят другие задачи."""
         stmt = select(task).where(task.c.employee_id.is_(None))
         result = await session.execute(stmt)
         return result.fetchall()

@@ -5,7 +5,6 @@ from src.task.models import task
 
 
 class EmployeeDAO:
-
     @classmethod
     async def add_employee(cls, session, employee_data):
         """Добавление нового сотрудника в базу данных"""
@@ -19,7 +18,7 @@ class EmployeeDAO:
             stmt = delete(employee)
             await session.execute(stmt)
             await session.execute(text("ALTER SEQUENCE employee_id_seq RESTART WITH 1"))
-            print(f"Таблица Employee очищена!")
+            print("Таблица Employee очищена!")
         except Exception as e:
             print(f"Произошла ошибка: {e}")
 
@@ -40,7 +39,9 @@ class EmployeeDAO:
     @classmethod
     async def update_employee(cls, session, employee_id, employee_data):
         """Обновление информации о сотруднике по его идентификатору"""
-        stmt = update(employee).where(employee.c.id == employee_id).values(**employee_data)
+        stmt = (
+            update(employee).where(employee.c.id == employee_id).values(**employee_data)
+        )
         await session.execute(stmt)
 
     @classmethod
@@ -59,9 +60,12 @@ class EmployeeDAO:
     @classmethod
     async def get_employees_with_active_tasks(cls, session):
         """Получение списка сотрудников с количеством их активных задач, отсортированных по убыванию активных задач"""
-        stmt = select(employee, func.count(task.c.id).label('active_tasks_count')). \
-            outerjoin(task, employee.c.id == task.c.employee_id). \
-            where(task.c.is_active == True).group_by(employee.c.id). \
-            order_by(desc('active_tasks_count'))
+        stmt = (
+            select(employee, func.count(task.c.id).label("active_tasks_count"))
+            .outerjoin(task, employee.c.id == task.c.employee_id)
+            .where(task.c.is_active == True)
+            .group_by(employee.c.id)
+            .order_by(desc("active_tasks_count"))
+        )
         result = await session.execute(stmt)
         return result.fetchall()
