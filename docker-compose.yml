@@ -1,31 +1,31 @@
-version: '3.7'  # Версия Compose-файла
+version: '3.7'
 
 services:
-  db: # Сервис для базы данных
-    image: postgres:15  # Образ PostgreSQL версии 15
-    container_name: task_tracker_db  # Имя контейнера для базы данных
+  db:
+    image: postgres:15
+    container_name: task_tracker_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Монтирование тома для данных PostgreSQL
+      - postgres_data:/var/lib/postgresql/data
     env_file:
-      - .env-non-dev  # Файл переменных окружения для не-dev окружения
+      - .env-non-dev
     ports:
-      - 5432:5432  # Проброс портов для доступа к PostgreSQL извне
+      - 5432:5432
 
-  app: # Сервис для приложения
+  app:
     build:
-      context: .  # Контекст сборки Docker из текущего каталога
+      context: .
     env_file:
-      - .env-non-dev  # Файл переменных окружения для не-dev окружения
-    container_name: task_tracker_cont  # Имя контейнера для приложения
+      - .env-non-dev
+    container_name: task_tracker_cont
     command:
-      - "docker/app.sh"  # Команда запуска приложения
+      - "docker/app.sh"
     ports:
-      - 7777:8000  # Проброс портов для доступа к приложению извне
+      - 8001:8000
     depends_on:
-      - db  # Зависимость от контейнера с базой данных
+      - db
 
 volumes:
-  postgres_data:  # Определение тома для данных PostgreSQL
+  postgres_data:
 
 
 
