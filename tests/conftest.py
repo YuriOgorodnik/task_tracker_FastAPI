@@ -45,8 +45,7 @@ async def prepare_database():
         await conn.run_sync(metadata.drop_all)
 
 
-# SETUP
-@pytest.fixture(scope="session")
+@pytest.fixture(autouse=True, scope="session")
 def event_loop(request):
     """Create an instance of the default event loop for each test case."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
@@ -57,7 +56,7 @@ def event_loop(request):
 client = TestClient(app)
 
 
-@pytest.fixture(scope="session")
-async def ac() -> AsyncGenerator[AsyncClient, None]:
+@pytest.fixture
+async def ac() -> AsyncClient:
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
