@@ -20,12 +20,12 @@ async def list_tasks(session: AsyncSession = Depends(get_async_session)):
     return tasks
 
 
-@router.post("/create", response_model=TaskRead)
+@router.post("/create")
 async def create_task(
     new_task: TaskCreate, session: AsyncSession = Depends(get_async_session)
 ):
     """Создание новой задачи"""
-    created_task = await TaskDAO.add_task(session, new_task.dict())
+    created_task = await TaskDAO.add_task(session, new_task.model_dump())
     await session.commit()
 
     # Получаем информацию о сотруднике
@@ -53,7 +53,9 @@ async def update_task(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Обновление информации о задаче по её идентификатору"""
-    await TaskDAO.update_task(session, task_id, updated_task.dict(exclude_unset=True))
+    await TaskDAO.update_task(
+        session, task_id, updated_task.model_dump(exclude_unset=True)
+    )
     await session.commit()
     return updated_task
 
