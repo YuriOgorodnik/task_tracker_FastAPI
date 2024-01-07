@@ -16,12 +16,8 @@ from src.employee.models import employee
 task = Table(  # Определение таблицы "task" с использованием класса Table
     "task",  # Имя таблицы
     metadata,  # Объект метаданных, указывающий на базу данных, к которой привязана таблица
-    Column(
-        "id", Integer, primary_key=True, doc="Уникальный идентификатор задачи"
-    ),
-    Column(
-        "title", String(length=300), nullable=False, doc="Наименование задачи"
-    ),
+    Column("id", Integer, primary_key=True, doc="Уникальный идентификатор задачи"),
+    Column("title", String(length=300), nullable=False, doc="Наименование задачи"),
     Column(
         "created_at",
         TIMESTAMP(timezone=True),

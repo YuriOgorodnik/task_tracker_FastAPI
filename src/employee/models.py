@@ -11,21 +11,15 @@ employee = Table(  # Определение таблицы "employee" с исп�
     "employee",  # Имя таблицы
     metadata,  # Объект метаданных, указывающий на базу данных, к которой привязана таблица
     Column("id", Integer, primary_key=True, doc="Уникальный идентификатор сотрудника"),
-    Column(
-        "last_name", String, nullable=False, doc="Фамилия сотрудника"
-    ),
-    Column(
-        "first_name", String, nullable=False, doc="Имя сотрудника"
-    ),
+    Column("last_name", String, nullable=False, doc="Фамилия сотрудника"),
+    Column("first_name", String, nullable=False, doc="Имя сотрудника"),
     Column(
         "patronymic",
         String,
         nullable=True,
         doc="Отчество сотрудника (если таковое имеется)",
     ),
-    Column(
-        "position", String, nullable=False, doc="Должность сотрудника"
-    ),
+    Column("position", String, nullable=False, doc="Должность сотрудника"),
     Column(
         "phone_number",
         String,
