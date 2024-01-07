@@ -36,7 +36,7 @@ async def test_update_employee(ac: AsyncClient):
     update_data = {
         "first_name": "Новое_имя",
         "last_name": "Новая_фамилия",
-        "position": "Новая_должность"
+        "position": "Новая_должность",
     }
 
     response = await ac.put("/employee/update/1", json=update_data)
